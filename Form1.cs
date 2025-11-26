@@ -1,5 +1,6 @@
 ﻿using Microsoft.Web.WebView2.Core;
 using System.Text.Json;
+using System.IO; // Add this line
 
 namespace WinFormsApp1
 {
@@ -13,6 +14,13 @@ namespace WinFormsApp1
         private string dataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CVSBrowser");
         private bool isDarkMode = true;
         private bool isWebDarkModeEnabled = false;
+
+        // Add Ad Blocker properties
+        private bool isAdBlockerEnabled = true;
+
+        // Ad Blocker filter lists
+        private HashSet<string> adBlockDomains = new();
+        private HashSet<string> adBlockKeywords = new();
 
         // Dark Mode CSS to inject into web pages
         private const string DarkModeCSS = @"
@@ -40,6 +48,198 @@ namespace WinFormsApp1
             })();
         ";
 
+        // Ad Blocker CSS and JavaScript
+        private const string AdBlockerCSS = @"
+            (function() {
+                if (document.getElementById('ad-blocker-extension')) return;
+                
+                const style = document.createElement('style');
+                style.id = 'ad-blocker-extension';
+                style.textContent = `
+                    /* Block common ad containers */
+                    *[id*=""ad""], *[class*=""ad""], *[id*=""banner""], *[class*=""banner""],
+                    *[id*=""popup""], *[class*=""popup""], *[id*=""sponsor""], *[class*=""sponsor""],
+                    *[class*=""advertisement""], *[id*=""advertisement""], 
+                    iframe[src*=""ads""], iframe[src*=""doubleclick""], iframe[src*=""googlesyndication""],
+                    iframe[src*=""amazon-adsystem""], iframe[src*=""facebook.com/tr""],
+                    div[class*=""AdArea""], div[id*=""AdArea""], 
+                    div[class*=""adContainer""], div[id*=""adContainer""],
+                    div[class*=""ad-container""], div[id*=""ad-container""],
+                    div[class*=""adsystem""], div[id*=""adsystem""],
+                    ins.adsbygoogle, .adsbygoogle,
+                    /* Block social media widgets that track users */
+                    iframe[src*=""facebook.com/plugins""], iframe[src*=""twitter.com/widgets""],
+                    /* Block common ad networks */
+                    *[src*=""doubleclick.net""], *[src*=""googleadservices.com""],
+                    *[src*=""googlesyndication.com""], *[src*=""amazon-adsystem.com""],
+                    *[src*=""adsystem.com""], *[src*=""ads.yahoo.com""],
+                    *[src*=""advertising.com""], *[src*=""adsrvr.org""],
+                    /* Block overlay ads and popups */
+                    div[style*=""position: fixed""][style*=""z-index""],
+                    div[class*=""overlay""][class*=""ad""], div[id*=""overlay""][id*=""ad""],
+                    /* Block newsletter popups */
+                    div[class*=""newsletter""][class*=""popup""], div[id*=""newsletter""][id*=""popup""],
+                    div[class*=""subscribe""][class*=""modal""], div[id*=""subscribe""][id*=""modal""]
+                    {
+                        display: none !important;
+                        visibility: hidden !important;
+                        opacity: 0 !important;
+                        width: 0 !important;
+                        height: 0 !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        border: none !important;
+                        background: none !important;
+                    }
+                    
+                    /* Remove ad placeholders */
+                    .ad-placeholder, .advertisement-placeholder, 
+                    .banner-placeholder, .sponsored-content {
+                        display: none !important;
+                    }
+                    
+                    /* Fix layout after removing ads */
+                    body { 
+                        overflow-x: auto !important; 
+                    }
+                `;
+                document.head.appendChild(style);
+            })();
+        ";
+
+        private const string AdBlockerJS = @"
+            (function() {
+                if (window.adBlockerActive) return;
+                window.adBlockerActive = true;
+                
+                // Block common ad functions
+                const noop = function() {};
+                const noopStr = function() { return ''; };
+                const noopArray = function() { return []; };
+                const noopObj = function() { return {}; };
+                
+                // Override common ad networks
+                window.googletag = window.googletag || { cmd: [], display: noop, enableServices: noop };
+                window.pbjs = window.pbjs || { que: [], addAdUnits: noop, requestBids: noop };
+                window.apntag = window.apntag || { anq: [], loadTags: noop };
+                
+                // Block Google AdSense
+                if (typeof window.adsbygoogle !== 'undefined') {
+                    window.adsbygoogle = [];
+                }
+                
+                // Block Amazon ads
+                window.amzn_assoc_ad = noop;
+                window.amazon_ad_tag = noop;
+                
+                // Block Facebook tracking
+                window.fbq = window.fbq || noop;
+                window._fbq = window._fbq || noop;
+                
+                // Block Google Analytics and other trackers
+                window.gtag = window.gtag || noop;
+                window.ga = window.ga || noop;
+                window._gaq = window._gaq || { push: noop };
+                
+                // Remove ad elements continuously
+                const removeAds = function() {
+                    const adSelectors = [
+                        'iframe[src*=""ads""]', 'iframe[src*=""doubleclick""]',
+                        'iframe[src*=""googlesyndication""]', 'iframe[src*=""amazon-adsystem""]',
+                        '*[class*=""advertisement""]', '*[id*=""advertisement""]',
+                        '*[class*=""ad-banner""]', '*[id*=""ad-banner""]',
+                        '.adsbygoogle', 'ins.adsbygoogle',
+                        '*[class*=""sponsor""]', '*[id*=""sponsor""]',
+                        '*[class*=""popup""][style*=""position: fixed""]',
+                        'div[class*=""overlay""][class*=""ad""]'
+                    ];
+                    
+                    adSelectors.forEach(selector => {
+                        document.querySelectorAll(selector).forEach(el => {
+                            if (el && el.parentNode) {
+                                el.parentNode.removeChild(el);
+                            }
+                        });
+                    });
+                    
+                    // Remove elements with ad-related attributes
+                    document.querySelectorAll('*').forEach(el => {
+                        const className = el.className || '';
+                        const id = el.id || '';
+                        if (typeof className === 'string' && typeof id === 'string') {
+                            if (className.toLowerCase().includes('ad') || 
+                                id.toLowerCase().includes('ad') ||
+                                className.toLowerCase().includes('banner') ||
+                                id.toLowerCase().includes('banner') ||
+                                className.toLowerCase().includes('popup') ||
+                                id.toLowerCase().includes('popup')) {
+                                
+                                // Only remove if it's likely an ad (check size, content, etc.)
+                                const rect = el.getBoundingClientRect();
+                                if ((rect.width > 200 && rect.height > 100) || 
+                                    el.tagName === 'IFRAME' ||
+                                    el.innerHTML.toLowerCase().includes('advertisement')) {
+                                    if (el.parentNode) {
+                                        el.parentNode.removeChild(el);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                };
+                
+                // Run ad removal on page load and periodically
+                removeAds();
+                setInterval(removeAds, 2000);
+                
+                // Block popup windows
+                const originalOpen = window.open;
+                window.open = function(url, name, features) {
+                    // Allow opening if user initiated (check for recent click)
+                    if (window.userRecentlyClicked) {
+                        return originalOpen.call(this, url, name, features);
+                    }
+                    console.log('Blocked popup:', url);
+                    return null;
+                };
+                
+                // Track user clicks
+                let clickTimer;
+                document.addEventListener('click', function() {
+                    window.userRecentlyClicked = true;
+                    clearTimeout(clickTimer);
+                    clickTimer = setTimeout(() => {
+                        window.userRecentlyClicked = false;
+                    }, 1000);
+                }, true);
+                
+                // Block new window/tab creation from ads
+                const originalCreateElement = document.createElement;
+                document.createElement = function(tagName) {
+                    const element = originalCreateElement.call(this, tagName);
+                    if (tagName.toLowerCase() === 'a') {
+                        element.addEventListener('click', function(e) {
+                            if (this.target === '_blank' && !window.userRecentlyClicked) {
+                                e.preventDefault();
+                                console.log('Blocked ad link:', this.href);
+                            }
+                        });
+                    }
+                    return element;
+                };
+            })();
+        ";
+
+        private const string RemoveAdBlockerCSS = @"
+            (function() {
+                const adBlockerStyle = document.getElementById('ad-blocker-extension');
+                if (adBlockerStyle) {
+                    adBlockerStyle.remove();
+                }
+                window.adBlockerActive = false;
+            })();
+        ";
+
         public Form1()
         {
             InitializeComponent();
@@ -49,14 +249,45 @@ namespace WinFormsApp1
             {
                 InitializeDataFolder();
                 LoadBrowserData();
+                InitializeAdBlocker(); // Initialize ad blocker
                 ThemeManager.CurrentTheme = ThemeMode.Dark;
                 ThemeManager.ThemeChanged += OnThemeChanged;
                 WindowState = FormWindowState.Normal;
 
-                // Subscribe to new tab button event - Make sure this happens after InitializeComponent
-                // CHANGE THIS LINE: Open Google.com when new tab is clicked
+                // Subscribe to new tab button event
                 chromeTabControl.NewTabRequested += async (s, e) => await CreateNewTab(homeUrl);
             }
+        }
+
+        private void InitializeAdBlocker()
+        {
+            // Load ad blocker filters
+            LoadAdBlockerFilters();
+
+            // Update the ad blocker button state
+            UpdateAdBlockerButton();
+        }
+
+        private void LoadAdBlockerFilters()
+        {
+            // Common ad domains to block
+            adBlockDomains = new HashSet<string>
+            {
+                "doubleclick.net", "googleadservices.com", "googlesyndication.com",
+                "amazon-adsystem.com", "adsystem.com", "ads.yahoo.com",
+                "advertising.com", "adsrvr.org", "facebook.com/tr",
+                "google-analytics.com", "googletagmanager.com",
+                "scorecardresearch.com", "quantserve.com", "outbrain.com",
+                "taboola.com", "addthis.com", "sharethis.com"
+            };
+
+            // Keywords to identify ad-related requests
+            adBlockKeywords = new HashSet<string>
+            {
+                "advertisement", "banner", "popup", "sponsor", "tracking",
+                "analytics", "doubleclick", "adsystem", "adservice",
+                "/ads/", "/ad/", "/banner/", "/popup/"
+            };
         }
 
         private void InitializeDataFolder()
@@ -128,6 +359,7 @@ namespace WinFormsApp1
                     UpdateNavigationButtons();
                     UpdateChromeTheme();
                     UpdateDarkModeButton();
+                    UpdateAdBlockerButton();
                 }
                 catch (Exception ex)
                 {
@@ -327,6 +559,12 @@ namespace WinFormsApp1
                 // Ensure WebView2 is initialized first!
                 await webView.EnsureCoreWebView2Async(null);
 
+                // Set up ad blocker for this WebView
+                if (isAdBlockerEnabled)
+                {
+                    SetupAdBlockerForWebView(webView);
+                }
+
                 // Attach event handlers
                 webView.CoreWebView2.NavigationStarting += (s, args) => OnNavigationStarting(browserTab, args);
                 webView.CoreWebView2.NavigationCompleted += (s, args) => OnNavigationCompleted(browserTab, args);
@@ -349,7 +587,7 @@ namespace WinFormsApp1
                         if (addressBar != null)
                             addressBar.Text = url;
                     }
-                    
+
                     System.Diagnostics.Debug.WriteLine($"Navigating WebView to: {url}");
                     webView.CoreWebView2.Navigate(url);
                 }
@@ -365,6 +603,67 @@ namespace WinFormsApp1
                 System.Diagnostics.Debug.WriteLine($"Error creating tab: {ex.Message}");
                 MessageBox.Show($"Error creating tab: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 throw;
+            }
+        }
+
+        private void SetupAdBlockerForWebView(Microsoft.Web.WebView2.WinForms.WebView2 webView)
+        {
+            // Add web resource request filter to block ads
+            webView.CoreWebView2.AddWebResourceRequestedFilter("*", CoreWebView2WebResourceContext.All);
+            webView.CoreWebView2.WebResourceRequested += OnWebResourceRequested;
+            
+            // Enhanced popup blocking
+            webView.CoreWebView2.WindowCloseRequested += (s, args) =>
+            {
+                System.Diagnostics.Debug.WriteLine("Window close requested - possible popup");
+            };
+
+            // Handle script errors through console messages instead
+            //webView.CoreWebView2.ConsoleMessage += (s, args) =>
+            //{
+            //    if (args.Kind == CoreWebView2ConsoleMessageKind.Error)
+            //    {
+            //        System.Diagnostics.Debug.WriteLine($"Console error (possibly blocked ad script): {args.Message}");
+            //    }
+            //};
+        }
+
+        private void OnWebResourceRequested(object sender, CoreWebView2WebResourceRequestedEventArgs e)
+        {
+            if (!isAdBlockerEnabled) return;
+
+            string uri = e.Request.Uri.ToLower();
+
+            // Check if the request is for an ad
+            bool isAd = adBlockDomains.Any(domain => uri.Contains(domain)) ||
+                       adBlockKeywords.Any(keyword => uri.Contains(keyword));
+
+            if (isAd)
+            {
+                System.Diagnostics.Debug.WriteLine($"Blocked ad request: {e.Request.Uri}");
+
+                try
+                {
+                    // Replace this line:
+                    // response.Headers.Add("Content-Type", "text/plain");
+
+                    // With this line:
+                    // Fix: Use CoreWebView2.CreateWebResourceResponse instead of e.Environment.CreateWebResourceResponse
+                    var webView = sender as Microsoft.Web.WebView2.WinForms.WebView2;
+                    if (webView?.CoreWebView2 != null)
+                    {
+                        var response = webView.CoreWebView2.Environment.CreateWebResourceResponse(
+                            new MemoryStream(), 204, "No Content", "");
+                        response.Headers.AppendHeader("Content-Type", "text/plain");
+                        //response.Headers.Add("Content-Type", "text/plain");
+                        e.Response = response;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error blocking ad request: {ex.Message}");
+                    // Fallback: just let the request through if blocking fails
+                }
             }
         }
 
@@ -406,6 +705,14 @@ namespace WinFormsApp1
 
                 System.Diagnostics.Debug.WriteLine($"Navigation starting for tab: {args.Uri}");
 
+                // Check if navigation should be blocked (malicious ads, etc.)
+                if (isAdBlockerEnabled && IsAdUrl(args.Uri))
+                {
+                    System.Diagnostics.Debug.WriteLine($"Blocked navigation to ad URL: {args.Uri}");
+                    args.Cancel = true;
+                    return;
+                }
+
                 // Update the tab's URL immediately
                 tab.Url = args.Uri;
 
@@ -415,6 +722,15 @@ namespace WinFormsApp1
                     addressBar.Text = args.Uri;
                 }
             });
+        }
+
+        private bool IsAdUrl(string url)
+        {
+            if (string.IsNullOrEmpty(url)) return false;
+
+            string lowerUrl = url.ToLower();
+            return adBlockDomains.Any(domain => lowerUrl.Contains(domain)) ||
+                   adBlockKeywords.Any(keyword => lowerUrl.Contains(keyword));
         }
 
         private async void OnNavigationCompleted(BrowserTab tab, CoreWebView2NavigationCompletedEventArgs args)
@@ -438,7 +754,7 @@ namespace WinFormsApp1
                         AddToHistory(tab.Title, tab.Url);
                         SaveBrowserSession();
 
-                        // Apply dark mode if enabled
+                        // Apply extensions if enabled
                         if (isWebDarkModeEnabled && tab.WebView != null)
                         {
                             try
@@ -448,6 +764,20 @@ namespace WinFormsApp1
                             catch (Exception ex)
                             {
                                 System.Diagnostics.Debug.WriteLine($"Failed to apply dark mode: {ex.Message}");
+                            }
+                        }
+
+                        // Apply ad blocker if enabled
+                        if (isAdBlockerEnabled && tab.WebView != null)
+                        {
+                            try
+                            {
+                                await tab.WebView.CoreWebView2.ExecuteScriptAsync(AdBlockerCSS);
+                                await tab.WebView.CoreWebView2.ExecuteScriptAsync(AdBlockerJS);
+                            }
+                            catch (Exception ex)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"Failed to apply ad blocker: {ex.Message}");
                             }
                         }
                     }
@@ -486,6 +816,14 @@ namespace WinFormsApp1
 
         private async void OnNewWindowRequested(CoreWebView2NewWindowRequestedEventArgs args)
         {
+            // Check if this is a popup ad
+            if (isAdBlockerEnabled && IsAdUrl(args.Uri))
+            {
+                System.Diagnostics.Debug.WriteLine($"Blocked popup ad: {args.Uri}");
+                args.Handled = true;
+                return;
+            }
+
             args.Handled = true;
             await CreateNewTab(args.Uri);
         }
@@ -528,13 +866,13 @@ namespace WinFormsApp1
         private void UpdateNavigationButtons()
         {
             var currentTab = GetCurrentTab();
-            
+
             if (backButton != null)
             {
                 backButton.Enabled = currentTab?.CanGoBack ?? false;
                 backButton.ForeColor = backButton.Enabled ? Color.White : Color.Gray;
             }
-            
+
             if (forwardButton != null)
             {
                 forwardButton.Enabled = currentTab?.CanGoForward ?? false;
@@ -548,6 +886,16 @@ namespace WinFormsApp1
             {
                 darkModeExtensionButton.Text = isWebDarkModeEnabled ? "🌞" : "🌙";
                 darkModeExtensionButton.ForeColor = isWebDarkModeEnabled ? Color.Gold : Color.White;
+            }
+        }
+
+        private void UpdateAdBlockerButton()
+        {
+            if (adBlockerButton != null)
+            {
+                adBlockerButton.Text = isAdBlockerEnabled ? "🛡️" : "🚫";
+                adBlockerButton.ForeColor = isAdBlockerEnabled ? Color.LightGreen : Color.Gray;
+                adBlockerButton.BackColor = isAdBlockerEnabled ? Color.FromArgb(30, 144, 255, 50) : Color.Transparent;
             }
         }
 
@@ -643,6 +991,63 @@ namespace WinFormsApp1
             }
         }
 
+        // Ad Blocker Extension Event Handler
+        private async void AdBlockerButton_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                isAdBlockerEnabled = !isAdBlockerEnabled;
+                UpdateAdBlockerButton();
+
+                var currentTab = GetCurrentTab();
+                if (currentTab?.WebView?.CoreWebView2 != null)
+                {
+                    if (isAdBlockerEnabled)
+                    {
+                        // Enable ad blocker
+                        await currentTab.WebView.CoreWebView2.ExecuteScriptAsync(AdBlockerCSS);
+                        await currentTab.WebView.CoreWebView2.ExecuteScriptAsync(AdBlockerJS);
+
+                        // Set up request filtering for existing tabs
+                        foreach (var tab in browserTabs)
+                        {
+                            if (tab.WebView?.CoreWebView2 != null)
+                            {
+                                try
+                                {
+                                    SetupAdBlockerForWebView(tab.WebView);
+                                }
+                                catch (Exception filterEx)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"Error setting up ad blocker for existing tab: {filterEx.Message}");
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Disable ad blocker
+                        await currentTab.WebView.CoreWebView2.ExecuteScriptAsync(RemoveAdBlockerCSS);
+
+                        // Note: Cannot remove WebResourceRequested filters dynamically
+                        // They will be removed when new tabs are created
+                    }
+                }
+
+                SaveBrowserData();
+
+                // Show notification
+                string message = isAdBlockerEnabled ? "Ad Blocker Enabled" : "Ad Blocker Disabled";
+                MessageBox.Show($"{message}\n\nThe ad blocker will take full effect on newly loaded pages.",
+                    "Ad Blocker", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error toggling ad blocker: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"AdBlocker error: {ex}");
+            }
+        }
+
         // Event Handlers
         private void addressBar_KeyDown(object sender, KeyEventArgs e)
         {
@@ -681,7 +1086,15 @@ namespace WinFormsApp1
             var currentTab = GetCurrentTab();
             if (currentTab?.WebView?.CoreWebView2 != null)
             {
-                currentTab.WebView.CoreWebView2.Navigate(homeUrl);
+                try
+                {
+                    currentTab.WebView.CoreWebView2.Navigate(homeUrl);
+                }
+                catch (Exception)
+                {
+
+                    throw;
+                }
             }
         }
 
@@ -692,7 +1105,6 @@ namespace WinFormsApp1
             UpdateNavigationButtons();
             SaveBrowserSession();
         }
-
         private void ChromeTabControl_MouseClick(object sender, MouseEventArgs e)
         {
             var chromeTab = (ChromeTabControl)sender;
@@ -803,6 +1215,8 @@ namespace WinFormsApp1
                 contextMenu.Items.Add("Bookmarks", null, (s, args) => ShowBookmarksDialog());
                 contextMenu.Items.Add("History", null, (s, args) => ShowHistoryDialog());
                 contextMenu.Items.Add("Downloads", null, (s, args) => ShowDownloadsDialog());
+                contextMenu.Items.Add("-");
+                contextMenu.Items.Add($"Ad Blocker: {(isAdBlockerEnabled ? "ON" : "OFF")}", null, async (s, args) => AdBlockerButton_Click(this, EventArgs.Empty));
                 contextMenu.Items.Add("-");
                 contextMenu.Items.Add("Restore Session (Ctrl+Shift+T)", null, async (s, args) =>
                 {
@@ -935,7 +1349,7 @@ namespace WinFormsApp1
         {
             try
             {
-                MessageBox.Show($"Downloads ({downloads.Count} items)\n\nThis feature will be enhanced in future updates.", 
+                MessageBox.Show($"Downloads ({downloads.Count} items)\n\nThis feature will be enhanced in future updates.",
                     "Downloads", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
@@ -943,19 +1357,27 @@ namespace WinFormsApp1
                 MessageBox.Show($"Error showing downloads: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-
         private void ShowSettingsDialog()
         {
             try
             {
-                var settingsForm = new SettingsForm(homeUrl, isDarkMode, isWebDarkModeEnabled);
-                if (!DesignMode)
-                {
-                    ThemeManager.ApplyTheme(settingsForm);
-                }
+                System.Diagnostics.Debug.WriteLine($"Opening settings with values: homeUrl={homeUrl}, isDarkMode={isDarkMode}, isWebDarkModeEnabled={isWebDarkModeEnabled}, isAdBlockerEnabled={isAdBlockerEnabled}");
 
-                if (settingsForm.ShowDialog() == DialogResult.OK)
+                var settingsForm = new SettingsForm(homeUrl, isDarkMode, isWebDarkModeEnabled, isAdBlockerEnabled);
+
+                // Remove the problematic ThemeManager.ApplyTheme line for now
+                // if (!DesignMode)
+                // {
+                //     ThemeManager.ApplyTheme(settingsForm);
+                // }
+
+                var result = settingsForm.ShowDialog();
+                System.Diagnostics.Debug.WriteLine($"Dialog result: {result}");
+
+                if (result == DialogResult.OK)
                 {
+                    System.Diagnostics.Debug.WriteLine($"Applying settings: homeUrl={settingsForm.HomeUrl}, isDarkMode={settingsForm.IsDarkMode}");
+
                     homeUrl = settingsForm.HomeUrl;
                     if (settingsForm.IsDarkMode != isDarkMode)
                     {
@@ -990,12 +1412,18 @@ namespace WinFormsApp1
                             });
                         }
                     }
+                    if (settingsForm.IsAdBlockerEnabled != isAdBlockerEnabled)
+                    {
+                        isAdBlockerEnabled = settingsForm.IsAdBlockerEnabled;
+                        UpdateAdBlockerButton();
+                    }
                     SaveBrowserData();
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Error showing settings: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                System.Diagnostics.Debug.WriteLine($"ShowSettingsDialog error: {ex}");
             }
         }
 
@@ -1041,6 +1469,13 @@ namespace WinFormsApp1
                             isWebDarkModeEnabled = webDarkMode;
                         }
                     }
+                    if (settings?.TryGetValue("isAdBlockerEnabled", out var savedAdBlocker) == true)
+                    {
+                        if (bool.TryParse(savedAdBlocker?.ToString(), out bool adBlocker))
+                        {
+                            isAdBlockerEnabled = adBlocker;
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -1064,7 +1499,8 @@ namespace WinFormsApp1
                 {
                     ["homeUrl"] = homeUrl,
                     ["isDarkMode"] = isDarkMode,
-                    ["isWebDarkModeEnabled"] = isWebDarkModeEnabled
+                    ["isWebDarkModeEnabled"] = isWebDarkModeEnabled,
+                    ["isAdBlockerEnabled"] = isAdBlockerEnabled
                 };
                 File.WriteAllText(settingsFile, JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true }));
             }
@@ -1161,6 +1597,11 @@ namespace WinFormsApp1
             }
         }
 
+        private void tabStripPanel_DoubleClick(object sender, EventArgs e)
+        {
+            maximizeButton.PerformClick();
+        }
+
         private void tabStripPanel_MouseUp(object sender, MouseEventArgs e)
         {
             isDragging = false;
@@ -1184,13 +1625,4 @@ namespace WinFormsApp1
             }
         }
     }
-
-    //// Add missing session classes if they don't exist
-    //public class TabSession
-    //{
-    //    public string Title { get; set; } = "";
-    //    public string Url { get; set; } = "";
-    //    public DateTime LastAccess { get; set; } = DateTime.Now;
-    //    public bool IsActiveTab { get; set; }
-    //}
 }

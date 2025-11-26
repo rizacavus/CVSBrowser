@@ -23,6 +23,7 @@ namespace WinFormsApp1
         private Button maximizeButton;
         private Button minimizeButton;
         private Button darkModeExtensionButton;
+        private Button adBlockerButton;
         private ProgressBar progressBar;
         private Panel addressBarBorder;
         private Panel addressBarContainer;
@@ -96,6 +97,7 @@ namespace WinFormsApp1
             navigationPanel = new Panel();
             settingsButton = new Button();
             bookmarkButton = new Button();
+            adBlockerButton = new Button();
             darkModeExtensionButton = new Button();
             addressBarBorder = new Panel();
             addressBarContainer = new Panel();
@@ -127,6 +129,7 @@ namespace WinFormsApp1
             tabStripPanel.MouseDown += tabStripPanel_MouseDown;
             tabStripPanel.MouseMove += tabStripPanel_MouseMove;
             tabStripPanel.MouseUp += tabStripPanel_MouseUp;
+            tabStripPanel.DoubleClick += tabStripPanel_DoubleClick;
             // 
             // chromeTabControl
             // 
@@ -143,7 +146,7 @@ namespace WinFormsApp1
             chromeTabControl.DrawItem += ChromeTabControl_DrawItem;
             chromeTabControl.SelectedIndexChanged += ChromeTabControl_SelectedIndexChanged;
             chromeTabControl.MouseClick += ChromeTabControl_MouseClick;
-            chromeTabControl.NewTabRequested += (s, e) => _ = CreateNewTab();
+            //chromeTabControl.NewTabRequested += (s, e) => _ = CreateNewTab();
             // 
             // minimizeButton
             // 
@@ -204,6 +207,7 @@ namespace WinFormsApp1
             navigationPanel.BackColor = Color.FromArgb(51, 51, 55);
             navigationPanel.Controls.Add(settingsButton);
             navigationPanel.Controls.Add(bookmarkButton);
+            navigationPanel.Controls.Add(adBlockerButton);
             navigationPanel.Controls.Add(darkModeExtensionButton);
             navigationPanel.Controls.Add(addressBarBorder);
             navigationPanel.Controls.Add(homeButton);
@@ -229,7 +233,7 @@ namespace WinFormsApp1
             settingsButton.Location = new Point(ClientSize.Width - 42, 9);
             settingsButton.Name = "settingsButton";
             settingsButton.Size = new Size(32, 32);
-            settingsButton.TabIndex = 7;
+            settingsButton.TabIndex = 8;
             settingsButton.Text = "⋮";
             settingsButton.UseVisualStyleBackColor = false;
             settingsButton.Click += settingsButton_Click;
@@ -246,11 +250,28 @@ namespace WinFormsApp1
             bookmarkButton.Location = new Point(ClientSize.Width - 80, 9);
             bookmarkButton.Name = "bookmarkButton";
             bookmarkButton.Size = new Size(32, 32);
-            bookmarkButton.TabIndex = 6;
+            bookmarkButton.TabIndex = 7;
             bookmarkButton.Text = "★";
             bookmarkButton.UseVisualStyleBackColor = false;
             bookmarkButton.Click += bookmarkButton_Click;
             SetupButtonHover(bookmarkButton);
+            // 
+            // adBlockerButton
+            // 
+            adBlockerButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            adBlockerButton.BackColor = Color.Transparent;
+            adBlockerButton.FlatAppearance.BorderSize = 0;
+            adBlockerButton.FlatStyle = FlatStyle.Flat;
+            adBlockerButton.Font = new Font("Segoe UI", 12F);
+            adBlockerButton.ForeColor = Color.White;
+            adBlockerButton.Location = new Point(ClientSize.Width - 118, 9);
+            adBlockerButton.Name = "adBlockerButton";
+            adBlockerButton.Size = new Size(32, 32);
+            adBlockerButton.TabIndex = 6;
+            adBlockerButton.Text = "🛡️";
+            adBlockerButton.UseVisualStyleBackColor = false;
+            adBlockerButton.Click += AdBlockerButton_Click;
+            SetupButtonHover(adBlockerButton);
             // 
             // darkModeExtensionButton
             // 
@@ -260,7 +281,7 @@ namespace WinFormsApp1
             darkModeExtensionButton.FlatStyle = FlatStyle.Flat;
             darkModeExtensionButton.Font = new Font("Segoe UI", 12F);
             darkModeExtensionButton.ForeColor = Color.White;
-            darkModeExtensionButton.Location = new Point(ClientSize.Width - 118, 9);
+            darkModeExtensionButton.Location = new Point(ClientSize.Width - 156, 9);
             darkModeExtensionButton.Name = "darkModeExtensionButton";
             darkModeExtensionButton.Size = new Size(32, 32);
             darkModeExtensionButton.TabIndex = 5;
@@ -276,7 +297,7 @@ namespace WinFormsApp1
             addressBarBorder.Controls.Add(addressBarContainer);
             addressBarBorder.Location = new Point(160, 7);
             addressBarBorder.Name = "addressBarBorder";
-            addressBarBorder.Size = new Size(ClientSize.Width - 290, 36);
+            addressBarBorder.Size = new Size(ClientSize.Width - 328, 36);
             addressBarBorder.TabIndex = 4;
             // 
             // addressBarContainer
@@ -288,7 +309,7 @@ namespace WinFormsApp1
             addressBarContainer.Margin = new Padding(1);
             addressBarContainer.Name = "addressBarContainer";
             addressBarContainer.Padding = new Padding(8);
-            addressBarContainer.Size = new Size(ClientSize.Width - 290, 36);
+            addressBarContainer.Size = new Size(ClientSize.Width - 328, 36);
             addressBarContainer.TabIndex = 0;
             // 
             // addressBar
@@ -300,7 +321,7 @@ namespace WinFormsApp1
             addressBar.ForeColor = Color.White;
             addressBar.Location = new Point(8, 8);
             addressBar.Name = "addressBar";
-            addressBar.Size = new Size(ClientSize.Width - 306, 20);
+            addressBar.Size = new Size(ClientSize.Width - 344, 20);
             addressBar.TabIndex = 0;
             addressBar.KeyDown += addressBar_KeyDown;
             // 
@@ -376,7 +397,7 @@ namespace WinFormsApp1
             progressBar.Location = new Point(0, 86);
             progressBar.Name = "progressBar";
             progressBar.Size = new Size(1200, 3);
-            progressBar.Style = ProgressBarStyle.Continuous;
+            progressBar.Style = ProgressBarStyle.Marquee;
             progressBar.TabIndex = 1;
             progressBar.Visible = false;
             // 
@@ -401,11 +422,12 @@ namespace WinFormsApp1
             Controls.Add(navigationPanel);
             Controls.Add(tabStripPanel);
             FormBorderStyle = FormBorderStyle.None;
+            Icon = CVSBrowser.Properties.Resources.AppIcon;
             KeyPreview = true;
             MinimumSize = new Size(800, 600);
             Name = "Form1";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "Advanced Browser";
+            Text = "CVSBrowser";
             WindowState = FormWindowState.Maximized;
             Load += Form1_Load;
             Resize += Form1_Resize;
@@ -431,84 +453,85 @@ namespace WinFormsApp1
                 RemoveWindowBorder();
             }
         }
-
+        private const int GWL_EXSTYLE = -20;
+        private const int WS_BORDER = 0x00800000;
+        private const int WS_DLGFRAME = 0x00400000;
+        private const uint SWP_DRAWFRAME = 0x0020;
         private void RemoveWindowBorder()
         {
             if (Handle != IntPtr.Zero)
             {
                 var style = GetWindowLong(Handle, GWL_STYLE);
+
+                // Remove caption and system menu but keep thick frame for resizing
                 style &= ~(WS_CAPTION | WS_SYSMENU);
-                style |= WS_THICKFRAME; // Keep thick frame for resizing
+                style |= WS_THICKFRAME; // Essential for window resizing
+
                 SetWindowLong(Handle, GWL_STYLE, style);
-                SetWindowPos(Handle, IntPtr.Zero, 0, 0, 0, 0, SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED);
+                SetWindowPos(Handle, IntPtr.Zero, 0, 0, 0, 0,
+                    SWP_NOZORDER | SWP_NOMOVE | SWP_NOSIZE | SWP_FRAMECHANGED);
             }
         }
 
-        // Custom paint for black resize border
+        // Custom paint - no border drawing needed
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
-            
-            // Draw thin black border at the top for resize indication
-            if (WindowState != FormWindowState.Maximized)
-            {
-                using (var pen = new Pen(Color.Black, 1))
-                {
-                    e.Graphics.DrawLine(pen, 0, 0, ClientSize.Width, 0);
-                }
-            }
+            // No line drawing - completely clean look
         }
 
-        // Override WndProc to handle custom resize behavior
+        // Keep your existing WndProc for enhanced resize detection
         protected override void WndProc(ref Message m)
         {
+            const int RESIZE_HANDLE_SIZE = 5;
+
             if (m.Msg == WM_NCHITTEST && WindowState != FormWindowState.Maximized)
             {
                 var cursor = PointToClient(Cursor.Position);
-                
-                // Check for resize zones with thinner borders
-                if (cursor.X <= ResizeBorderWidth && cursor.Y <= ResizeBorderWidth)
+
+                // Check for resize zones
+                if (cursor.X <= RESIZE_HANDLE_SIZE && cursor.Y <= RESIZE_HANDLE_SIZE)
                 {
                     m.Result = (IntPtr)HT_TOPLEFT;
                     return;
                 }
-                if (cursor.X >= ClientSize.Width - ResizeBorderWidth && cursor.Y <= ResizeBorderWidth)
+                if (cursor.X >= ClientSize.Width - RESIZE_HANDLE_SIZE && cursor.Y <= RESIZE_HANDLE_SIZE)
                 {
                     m.Result = (IntPtr)HT_TOPRIGHT;
                     return;
                 }
-                if (cursor.X <= ResizeBorderWidth && cursor.Y >= ClientSize.Height - ResizeBorderWidth)
+                if (cursor.X <= RESIZE_HANDLE_SIZE && cursor.Y >= ClientSize.Height - RESIZE_HANDLE_SIZE)
                 {
                     m.Result = (IntPtr)HT_BOTTOMLEFT;
                     return;
                 }
-                if (cursor.X >= ClientSize.Width - ResizeBorderWidth && cursor.Y >= ClientSize.Height - ResizeBorderWidth)
+                if (cursor.X >= ClientSize.Width - RESIZE_HANDLE_SIZE && cursor.Y >= ClientSize.Height - RESIZE_HANDLE_SIZE)
                 {
                     m.Result = (IntPtr)HT_BOTTOMRIGHT;
                     return;
                 }
-                if (cursor.X <= ResizeBorderWidth)
+                if (cursor.X <= RESIZE_HANDLE_SIZE)
                 {
                     m.Result = (IntPtr)HT_LEFT;
                     return;
                 }
-                if (cursor.X >= ClientSize.Width - ResizeBorderWidth)
+                if (cursor.X >= ClientSize.Width - RESIZE_HANDLE_SIZE)
                 {
                     m.Result = (IntPtr)HT_RIGHT;
                     return;
                 }
-                if (cursor.Y <= ResizeBorderWidth)
+                if (cursor.Y <= RESIZE_HANDLE_SIZE)
                 {
                     m.Result = (IntPtr)HT_TOP;
                     return;
                 }
-                if (cursor.Y >= ClientSize.Height - ResizeBorderWidth)
+                if (cursor.Y >= ClientSize.Height - RESIZE_HANDLE_SIZE)
                 {
                     m.Result = (IntPtr)HT_BOTTOM;
                     return;
                 }
             }
-            
+
             base.WndProc(ref m);
         }
 
@@ -551,22 +574,25 @@ namespace WinFormsApp1
             if (addressBarBorder != null)
             {
                 // Calculate new width for address bar (form width minus buttons and spacing)
-                var newWidth = Math.Max(200, ClientSize.Width - 290);
+                var newWidth = Math.Max(200, ClientSize.Width - 328); // Updated to account for ad blocker button
                 addressBarBorder.Size = new Size(newWidth, 36);
                 
                 // Update right-side button positions
                 if (darkModeExtensionButton != null)
-                    darkModeExtensionButton.Location = new Point(Math.Max(ClientSize.Width - 118, 200), 9);
+                    darkModeExtensionButton.Location = new Point(Math.Max(ClientSize.Width - 156, 200), 9);
+                
+                if (adBlockerButton != null)
+                    adBlockerButton.Location = new Point(Math.Max(ClientSize.Width - 118, 238), 9);
                 
                 if (bookmarkButton != null)
-                    bookmarkButton.Location = new Point(Math.Max(ClientSize.Width - 80, 238), 9);
+                    bookmarkButton.Location = new Point(Math.Max(ClientSize.Width - 80, 276), 9);
                 
                 if (settingsButton != null)
-                    settingsButton.Location = new Point(Math.Max(ClientSize.Width - 42, 276), 9);
+                    settingsButton.Location = new Point(Math.Max(ClientSize.Width - 42, 314), 9);
             }
             
             // Repaint to ensure black border is drawn
-            Invalidate();
+            //Invalidate();
         }
 
         #endregion
@@ -577,12 +603,12 @@ namespace WinFormsApp1
         {
             var newTabPage = new TabPage("New Tab");
             
-            // Optionally, you can set this tab as the active one
-            chromeTabControl.SelectedTab = newTabPage;
             
             // Add the new tab page to the control
             chromeTabControl.TabPages.Add(newTabPage);
 
+            // Optionally, you can set this tab as the active one
+            chromeTabControl.SelectedTab = newTabPage;
             // Return the newly created tab page
             return newTabPage;
         }
@@ -753,7 +779,7 @@ namespace WinFormsApp1
         private void DrawNewTabButton(Graphics g)
         {
             int tabWidth = TabCount > 0 ? GetTabRect(0).Width : 200;
-            var newTabRect = new Rectangle(TabCount * tabWidth + 5, 8, 20, 20);
+            var newTabRect = new Rectangle(TabCount * tabWidth, 8, 20, 20);
             
             // Enhanced button background with better hover effect
             Color buttonColor = isNewTabButtonHovered ? Color.FromArgb(100, 100, 104) : Color.FromArgb(62, 62, 66);
@@ -772,7 +798,7 @@ namespace WinFormsApp1
             using (var textBrush = new SolidBrush(Color.White))
             using (var font = new Font("Segoe UI", 12F, FontStyle.Bold))
             {
-                var textRect = new RectangleF(newTabRect.X + 5, newTabRect.Y + 1, newTabRect.Width, newTabRect.Height);
+                var textRect = new RectangleF(newTabRect.X, newTabRect.Y + 1, newTabRect.Width, newTabRect.Height);
                 var format = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
                 g.DrawString("+", font, textBrush, textRect, format);
             }
@@ -781,7 +807,7 @@ namespace WinFormsApp1
         public Rectangle GetNewTabButtonRect()
         {
             int tabWidth = TabCount > 0 ? GetTabRect(0).Width : 200;
-            return new Rectangle(TabCount * tabWidth + 5, 8, 20, 20);
+            return new Rectangle(TabCount * tabWidth, 8, 20, 20);
         }
 
         private int hoveredTabIndex = -1;
