@@ -31,16 +31,16 @@ namespace WinFormsApp1
         // Windows API for custom window frame and resizing
         [DllImport("user32.dll")]
         public static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
-        
+
         [DllImport("user32.dll")]
         public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
-        
+
         [DllImport("user32.dll")]
         public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
         [DllImport("user32.dll")]
         public static extern int SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
-        
+
         [DllImport("user32.dll")]
         public static extern bool ReleaseCapture();
 
@@ -146,7 +146,6 @@ namespace WinFormsApp1
             chromeTabControl.DrawItem += ChromeTabControl_DrawItem;
             chromeTabControl.SelectedIndexChanged += ChromeTabControl_SelectedIndexChanged;
             chromeTabControl.MouseClick += ChromeTabControl_MouseClick;
-            //chromeTabControl.NewTabRequested += (s, e) => _ = CreateNewTab();
             // 
             // minimizeButton
             // 
@@ -551,7 +550,7 @@ namespace WinFormsApp1
         }
 
         private void CloseButton_Click(object sender, EventArgs e) => Close();
-        
+
         private void MaximizeButton_Click(object sender, EventArgs e)
         {
             if (WindowState == FormWindowState.Maximized)
@@ -565,7 +564,7 @@ namespace WinFormsApp1
                 maximizeButton.Text = "🗗";
             }
         }
-        
+
         private void MinimizeButton_Click(object sender, EventArgs e) => WindowState = FormWindowState.Minimized;
 
         private void Form1_Resize(object sender, EventArgs e)
@@ -576,34 +575,34 @@ namespace WinFormsApp1
                 // Calculate new width for address bar (form width minus buttons and spacing)
                 var newWidth = Math.Max(200, ClientSize.Width - 328); // Updated to account for ad blocker button
                 addressBarBorder.Size = new Size(newWidth, 36);
-                
+
                 // Update right-side button positions
                 if (darkModeExtensionButton != null)
                     darkModeExtensionButton.Location = new Point(Math.Max(ClientSize.Width - 156, 200), 9);
-                
+
                 if (adBlockerButton != null)
                     adBlockerButton.Location = new Point(Math.Max(ClientSize.Width - 118, 238), 9);
-                
+
                 if (bookmarkButton != null)
                     bookmarkButton.Location = new Point(Math.Max(ClientSize.Width - 80, 276), 9);
-                
+
                 if (settingsButton != null)
                     settingsButton.Location = new Point(Math.Max(ClientSize.Width - 42, 314), 9);
             }
-            
+
             // Repaint to ensure black border is drawn
             //Invalidate();
         }
 
         #endregion
 
-        
+
         // Assuming this function is responsible for creating a new tab
         private async Task<TabPage> CreateNewTab()
         {
             var newTabPage = new TabPage("New Tab");
-            
-            
+
+
             // Add the new tab page to the control
             chromeTabControl.TabPages.Add(newTabPage);
 
@@ -631,7 +630,7 @@ namespace WinFormsApp1
         protected override void OnMouseDown(MouseEventArgs e)
         {
             base.OnMouseDown(e);
-            
+
             if (e.Button == MouseButtons.Left)
             {
                 // Check if clicking on new tab button FIRST
@@ -676,7 +675,7 @@ namespace WinFormsApp1
                 NewTabRequested?.Invoke(this, EventArgs.Empty);
                 return;
             }
-            
+
             base.OnMouseClick(e);
         }
 
@@ -684,13 +683,13 @@ namespace WinFormsApp1
         {
             // Paint background
             e.Graphics.Clear(Color.FromArgb(51, 51, 55));
-            
+
             // Draw tabs
             for (int i = 0; i < TabCount; i++)
             {
                 DrawTab(e.Graphics, TabPages[i], i);
             }
-            
+
             // Draw new tab button area
             DrawNewTabButton(e.Graphics);
         }
@@ -700,19 +699,19 @@ namespace WinFormsApp1
             Rectangle tabRect = GetTabRect(index);
             bool isSelected = SelectedIndex == index;
             bool isHovered = index == hoveredTabIndex;
-            
+
             // Chrome-style rounded tab shape
             using (var path = CreateTabPath(tabRect, isSelected))
             {
                 // Tab background
-                Color tabColor = isSelected ? Color.FromArgb(37, 37, 38) : 
+                Color tabColor = isSelected ? Color.FromArgb(37, 37, 38) :
                                isHovered ? Color.FromArgb(62, 62, 66) : Color.FromArgb(51, 51, 55);
-                
+
                 using (var brush = new SolidBrush(tabColor))
                 {
                     g.FillPath(brush, path);
                 }
-                
+
                 // Tab border for selected tab
                 if (isSelected)
                 {
@@ -722,11 +721,11 @@ namespace WinFormsApp1
                     }
                 }
             }
-            
+
             // Tab text
             string text = tabPage.Text.Length > 25 ? tabPage.Text[..22] + "..." : tabPage.Text;
             var textRect = new Rectangle(tabRect.X + 16, tabRect.Y + 8, Math.Max(1, tabRect.Width - 48), tabRect.Height);
-            
+
             using (var textBrush = new SolidBrush(Color.White))
             using (var font = new Font("Segoe UI", 9F))
             {
@@ -738,7 +737,7 @@ namespace WinFormsApp1
                 };
                 g.DrawString(text, font, textBrush, textRect, textFormat);
             }
-            
+
             // Close button (X)
             var closeRect = new Rectangle(tabRect.Right - 20, tabRect.Y + 10, 12, 12);
             using (var closeBrush = new SolidBrush(isHovered ? Color.FromArgb(220, 220, 220) : Color.FromArgb(180, 180, 180)))
@@ -752,15 +751,15 @@ namespace WinFormsApp1
         {
             var path = new System.Drawing.Drawing2D.GraphicsPath();
             int radius = 8;
-            
+
             if (isSelected)
             {
                 // Selected tab - full rounded rectangle
                 path.AddArc(rect.X, rect.Y, radius * 2, radius * 2, 180, 90);
                 path.AddArc(rect.Right - radius * 2, rect.Y, radius * 2, radius * 2, 270, 90);
-                path.AddLine(rect.Right, rect.Y + radius, rect.Right, rect.Bottom);
-                path.AddLine(rect.Right, rect.Bottom, rect.X, rect.Bottom);
-                path.AddLine(rect.X, rect.Bottom, rect.X, rect.Y + radius);
+                path.AddLine(rect.Right, rect.Y + radius, rect.Right, rect.Bottom + 50);
+                path.AddLine(rect.Right, rect.Bottom + 50, rect.X, rect.Bottom + 50);
+                path.AddLine(rect.X, rect.Bottom + 50, rect.X, rect.Y + radius);
             }
             else
             {
@@ -771,29 +770,29 @@ namespace WinFormsApp1
                 path.AddLine(rect.Right - 4, rect.Bottom, rect.X + 4, rect.Bottom);
                 path.AddLine(rect.X + 4, rect.Bottom, rect.X + 4, rect.Y + 8);
             }
-            
+
             path.CloseFigure();
             return path;
         }
-        
+
         private void DrawNewTabButton(Graphics g)
         {
             int tabWidth = TabCount > 0 ? GetTabRect(0).Width : 200;
-            var newTabRect = new Rectangle(TabCount * tabWidth, 8, 20, 20);
-            
+            var newTabRect = new Rectangle(TabCount * tabWidth , 8, 20, 20);
+
             // Enhanced button background with better hover effect
             Color buttonColor = isNewTabButtonHovered ? Color.FromArgb(100, 100, 104) : Color.FromArgb(62, 62, 66);
             using (var brush = new SolidBrush(buttonColor))
             {
                 g.FillEllipse(brush, newTabRect);
             }
-            
+
             // Button border
             using (var pen = new Pen(Color.FromArgb(120, 120, 124), 1))
             {
                 g.DrawEllipse(pen, newTabRect);
             }
-            
+
             // Plus sign with better centering
             using (var textBrush = new SolidBrush(Color.White))
             using (var font = new Font("Segoe UI", 12F, FontStyle.Bold))
@@ -807,20 +806,20 @@ namespace WinFormsApp1
         public Rectangle GetNewTabButtonRect()
         {
             int tabWidth = TabCount > 0 ? GetTabRect(0).Width : 200;
-            return new Rectangle(TabCount * tabWidth, 8, 20, 20);
+            return new Rectangle(TabCount * tabWidth , 8, 20, 20);
         }
 
         private int hoveredTabIndex = -1;
-        
+
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
-            
+
             // Check new tab button hover
             var newTabRect = GetNewTabButtonRect();
             bool wasNewTabHovered = isNewTabButtonHovered;
             isNewTabButtonHovered = newTabRect.Contains(e.Location);
-            
+
             // Change cursor for new tab button
             if (isNewTabButtonHovered)
             {
@@ -830,7 +829,7 @@ namespace WinFormsApp1
             {
                 Cursor = Cursors.Default;
             }
-            
+
             // Check tab hover
             int newHoveredIndex = -1;
             for (int i = 0; i < TabCount; i++)
@@ -841,14 +840,14 @@ namespace WinFormsApp1
                     break;
                 }
             }
-            
+
             if (newHoveredIndex != hoveredTabIndex || wasNewTabHovered != isNewTabButtonHovered)
             {
                 hoveredTabIndex = newHoveredIndex;
                 Invalidate();
             }
         }
-        
+
         protected override void OnMouseLeave(EventArgs e)
         {
             base.OnMouseLeave(e);

@@ -1526,53 +1526,6 @@ namespace WinFormsApp1
         private bool isDragging = false;
         private Point dragStartPoint;
 
-        private void chromeTabControl_DragEnter(object sender, DragEventArgs e)
-        {
-            // This method is for file drag-and-drop operations
-        }
-
-        private void chromeTabControl_MouseDown(object sender, MouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.Left)
-            {
-                var chromeTab = (ChromeTabControl)sender;
-                bool clickedOnTab = false;
-
-                for (int i = 0; i < chromeTab.TabCount; i++)
-                {
-                    if (chromeTab.GetTabRect(i).Contains(e.Location))
-                    {
-                        clickedOnTab = true;
-                        break;
-                    }
-                }
-
-                if (!clickedOnTab && chromeTab.GetNewTabButtonRect().Contains(e.Location))
-                {
-                    clickedOnTab = true;
-                }
-
-                if (!clickedOnTab)
-                {
-                    isDragging = true;
-                    dragStartPoint = new Point(e.X, e.Y);
-                }
-            }
-        }
-
-        private void chromeTabControl_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (isDragging)
-            {
-                Point currentScreenPos = PointToScreen(e.Location);
-                Location = new Point(currentScreenPos.X - dragStartPoint.X, currentScreenPos.Y - dragStartPoint.Y);
-            }
-        }
-
-        private void chromeTabControl_MouseUp(object sender, MouseEventArgs e)
-        {
-            isDragging = false;
-        }
 
         private void Form1_MouseDown(object sender, MouseEventArgs e)
         {
