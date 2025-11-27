@@ -19,19 +19,245 @@ namespace WinFormsApp1
         private bool isAdBlockerEnabled = true;
 
         // Dark Mode CSS to inject into web pages
-        private const string DarkModeCSS = @"
+        // Replace the current DarkModeCSS constant in Form1.cs with this enhanced version:
+        private string DarkModeCSS = @"
             (function() {
                 if (document.getElementById('dark-mode-extension')) return;
-                
+        
                 const style = document.createElement('style');
                 style.id = 'dark-mode-extension';
                 style.textContent = `
-                    html { filter: invert(1) hue-rotate(180deg) !important; }
-                    img, video, iframe, canvas, svg, embed, object { filter: invert(1) hue-rotate(180deg) !important; }
-                    [style*=""""background-image""""] { filter: invert(1) hue-rotate(180deg) !important; }
-                    input, textarea, select { background-color: #333 !important; color: #fff !important; }
+                    /* Enhanced Dark Mode - No full inversion */
+            
+                    /* Override page background colors */
+                    html, body {
+                        background-color: #1a1a1a !important;
+                        color: #e0e0e0 !important;
+                    }
+            
+                    /* Target common light backgrounds */
+                    div, section, article, main, header, footer, nav, aside,
+                    .content, .main, .container, .wrapper, .page, .body,
+                    [class*=""content""], [class*=""main""], 
+                    [class*=""wrapper""], [class*=""page""], [id*=""content""],
+                    [id*=""main""],  [id*=""wrapper""] {
+                        background-color: #2d2d2d11 !important;
+                        color: #e0e0e0 !important;
+                    }
+            
+                    /* Text elements */
+                    p, span, div, h1, h2, h3, h4, h5, h6, li, td, th, label,
+                    .text, [class*=""text""], [class*=""title""], [class*=""heading""] {
+                        color: #e0e0e0 !important;
+                    }
+            
+                    /* Links */
+                    a, a:visited {
+                        color: #66b3ff !important;
+                    }
+            
+                    a:hover, a:focus {
+                        color: #99ccff !important;
+                    }
+            
+                    /* Cards, panels, and containers */
+                    .card, .panel, .box, .widget, .module,
+                    [class*=""card""], [class*=""panel""], [class*=""box""],
+                    [class*=""widget""], [class*=""module""], [class*=""item""] {
+                        background-color: #2d2d2d44 !important;
+                        color: #e0e0e0 !important;
+                        border-color: #444 !important;
+                    }
+            
+                    /* Input fields */
+                    input, textarea, select, option {
+                        background-color: #333 !important;
+                        color: #e0e0e0 !important;
+                        border-color: #555 !important;
+                    }
+            
+                    input::placeholder, textarea::placeholder {
+                        color: #999 !important;
+                    }
+            
+                    /* Buttons */
+                    button, .btn, [role=""button""], input[type=""submit""],
+                    input[type=""button""], [class*=""button""] {
+                        background-color: #404040 !important;
+                        color: #e0e0e0 !important;
+                        border-color: #555 !important;
+                    }
+            
+                    button:hover, .btn:hover, [role=""button""]:hover {
+                        background-color: #505050 !important;
+                    }
+            
+                    /* Tables */
+                    table, thead, tbody, tr, td, th {
+                        background-color: #2d2d2d88 !important;
+                        color: #e0e0e0 !important;
+                        border-color: #444 !important;
+                    }
+            
+                    tr:nth-child(even) {
+                        background-color: #333 !important;
+                    }
+            
+                    th {
+                        background-color: #3a3a3a !important;
+                    }
+            
+                    /* Navigation and menus */
+                    nav, .nav, .menu, .navbar, .navigation,
+                    [class*=""nav""], [class*=""menu""], [role=""navigation""] {
+                        background-color: #2a2a2a !important;
+                        color: #e0e0e0 !important;
+                    }
+            
+                    /* Sidebars */
+                    .sidebar, .aside, [class*=""sidebar""], [class*=""aside""] {
+                        background-color: #252525 !important;
+                        color: #e0e0e0 !important;
+                    }
+            
+                    /* Headers and footers */
+                    header, footer, .header, .footer {
+                        background-color: #2a2a2a !important;
+                        color: #e0e0e0 !important;
+                    }
+            
+                    /* Code blocks and pre-formatted text */
+                    pre, code, .code, [class*=""code""] {
+                        background-color: #1e1e1e !important;
+                        color: #f8f8f2 !important;
+                    }
+            
+                    /* Blockquotes */
+                    blockquote {
+                        background-color: #333 !important;
+                        color: #ccc !important;
+                        border-left-color: #666 !important;
+                    }
+            
+                    /* Forms and fieldsets */
+                    form, fieldset, .form, [class*=""form""] {
+                        background-color: #2d2d2d99 !important;
+                        color: #e0e0e0 !important;
+                    }
+            
+                    /* Modal and overlay elements */
+                    .modal, .overlay, .popup, .dialog,
+                    [class*=""modal""], [class*=""popup""],
+                   /* [class*=""modal""], [class*=""overlay""], [class*=""popup""],*/
+                    [class*=""dialog""], [role=""dialog""] {
+                        background-color: #2d2d2daa !important;
+                        color: #e0e0e0 !important;
+                    }
+            
+                    /* Preserve images, videos, and media */
+                    img, video, canvas, svg, picture, figure {
+                        /* Keep original appearance for media */
+                        filter: none !important;
+                    }
+            
+                    /* Handle white or very light backgrounds specifically */
+                    [style*=""background-color: white""],
+                    [style*=""background-color: #fff""],
+                    [style*=""background-color: #ffffff""],
+                    [style*=""background-color: rgb(255, 255, 255)""],
+                    [style*=""background: white""],
+                    [style*=""background: #fff""],
+                    [style*=""background: #ffffff""] {
+                        background-color: #2d2d2d33 !important;
+                    }
+            
+                    /* Handle very light gray backgrounds */
+                    [style*=""background-color: #f""],
+                    [style*=""background-color: #e""],
+                    [style*=""background-color: #d""] {
+                        background-color: #2d2d2d22 !important;
+                    }
+            
+                    /* Dark text on light backgrounds */
+                    [style*=""color: black""],
+                    [style*=""color: #000""],
+                    [style*=""color: #000000""],
+                    [style*=""color: rgb(0, 0, 0)""] {
+                        color: #e0e0e0 !important;
+                    }
+            
+                    /* Handle common class names for light elements */
+                    .white, .light, .bright, [class*=""white""], [class*=""light""] {
+                        background-color: #2d2d2d11 !important;
+                        color: #e0e0e0 !important;
+                    }
+            
+                    /* Scrollbars (webkit browsers) */
+                    ::-webkit-scrollbar {
+                        background-color: #2d2d2d66 !important;
+                    }
+            
+                    ::-webkit-scrollbar-thumb {
+                        background-color: #555 !important;
+                    }
+            
+                    ::-webkit-scrollbar-track {
+                        background-color: #333 !important;
+                    }
+            
+                    /* Selection */
+                    ::selection {
+                        background-color: #4a4a4a !important;
+                        color: #fff !important;
+                    }
+            
+                    /* Tooltips and dropdowns */
+                    .tooltip, .dropdown, [class*=""tooltip""], [class*=""dropdown""] {
+                        background-color: #333 !important;
+                        color: #e0e0e0 !important;
+                        border-color: #555 !important;
+                    }
+            
+                    /* Progress bars and sliders */
+                    progress, .progress, input[type=""range""], [class*=""progress""] {
+                        background-color: #333 !important;
+                    }
+            
+                    /* Badges and labels */
+                    .badge, .label, .tag, [class*=""badge""], [class*=""label""], [class*=""tag""] {
+                        background-color: #404040 !important;
+                        color: #e0e0e0 !important;
+                    }
                 `;
                 document.head.appendChild(style);
+        
+                // Also inject a script to handle dynamically loaded content
+                const observer = new MutationObserver(function(mutations) {
+                    mutations.forEach(function(mutation) {
+                        if (mutation.type === 'childList') {
+                            mutation.addedNodes.forEach(function(node) {
+                                if (node.nodeType === 1) { // Element node
+                                    // Apply dark styling to new elements
+                                    const elem = node;
+                                    if (elem.tagName && !elem.querySelector('#dark-mode-extension')) {
+                                        // Force dark background on new light elements
+                                        const bgColor = window.getComputedStyle(elem).backgroundColor;
+                                        if (bgColor === 'rgb(255, 255, 255)' || bgColor === 'white' || 
+                                            bgColor.match(/rgb\(2[5-9][0-9]|rgb\(255/)) {
+                                            elem.style.backgroundColor = '#2d2d2d77';
+                                            elem.style.color = '#e0e0e0';
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    });
+                });
+        
+                observer.observe(document.body, {
+                    childList: true,
+                    subtree: true
+                });
             })();
         ";
 
