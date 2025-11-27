@@ -4,10 +4,16 @@
     <_LastSelectedProfileId>C:\Users\riza.cavusoglu\source\repos\CVSBrowser\Properties\PublishProfiles\FolderProfile.pubxml</_LastSelectedProfileId>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Update="AdBlockerManagerForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Update="BookmarksForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="DownloadsForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="EnhancedInputDialog.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Update="Form1.cs">

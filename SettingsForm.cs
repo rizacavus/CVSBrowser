@@ -15,14 +15,16 @@ namespace WinFormsApp1
         private CheckBox darkModeCheckBox;
         private CheckBox webDarkModeCheckBox;
         private CheckBox adBlockerCheckBox;
+        private AdBlockerSettings adBlockerSettings;
 
-        public SettingsForm(string homeUrl, bool isDarkMode, bool isWebDarkModeEnabled, bool isAdBlockerEnabled)
+        public SettingsForm(string homeUrl, bool isDarkMode, bool isWebDarkModeEnabled, bool isAdBlockerEnabled, AdBlockerSettings adBlockerSettings = null)
         {
             // Store the initial values
             HomeUrl = homeUrl;
             IsDarkMode = isDarkMode;
             IsWebDarkModeEnabled = isWebDarkModeEnabled;
             IsAdBlockerEnabled = isAdBlockerEnabled;
+            this.adBlockerSettings = adBlockerSettings ?? new AdBlockerSettings();
             
             System.Diagnostics.Debug.WriteLine($"SettingsForm constructor called with: homeUrl={homeUrl}, isDarkMode={isDarkMode}, isWebDarkModeEnabled={isWebDarkModeEnabled}, isAdBlockerEnabled={isAdBlockerEnabled}");
             
@@ -137,12 +139,24 @@ namespace WinFormsApp1
                     AutoSize = false
                 };
 
+                // Add Advanced Ad Blocker Settings button
+                var advancedAdBlockerButton = new Button
+                {
+                    Text = "Advanced...",
+                    Location = new Point(300, 120),
+                    Size = new Size(80, 23),
+                    BackColor = Color.FromArgb(0, 120, 215),
+                    ForeColor = Color.White,
+                    FlatStyle = FlatStyle.Flat
+                };
+                advancedAdBlockerButton.Click += AdvancedAdBlockerButton_Click;
+
                 // Note label
                 var noteLabel = new Label
                 {
-                    Text = "Note: Web dark mode applies a filter to make light websites dark.",
+                    Text = "Note: Web dark mode applies a filter to make light websites dark.\nClick 'Advanced...' for detailed ad blocker settings.",
                     Location = new Point(140, 150),
-                    Size = new Size(300, 30),
+                    Size = new Size(300, 40),
                     ForeColor = Color.Gray,
                     Font = new Font("Segoe UI", 8F, FontStyle.Italic),
                     AutoSize = false
@@ -153,7 +167,7 @@ namespace WinFormsApp1
                 {
                     Text = "OK",
                     DialogResult = DialogResult.OK,
-                    Location = new Point(285, 190),
+                    Location = new Point(285, 200),
                     Size = new Size(75, 28)
                 };
 
@@ -161,7 +175,7 @@ namespace WinFormsApp1
                 {
                     Text = "Cancel",
                     DialogResult = DialogResult.Cancel,
-                    Location = new Point(366, 190),
+                    Location = new Point(366, 200),
                     Size = new Size(75, 28)
                 };
 
@@ -188,14 +202,14 @@ namespace WinFormsApp1
                     homeLabel, homeTextBox, 
                     themeLabel, darkModeCheckBox, 
                     webDarkModeLabel, webDarkModeCheckBox,
-                    securityLabel, adBlockerCheckBox,
+                    securityLabel, adBlockerCheckBox, advancedAdBlockerButton,
                     noteLabel,
                     okButton, cancelButton 
                 });
 
                 // Form properties
                 Text = "Browser Settings";
-                Size = new Size(470, 260);
+                Size = new Size(470, 270);
                 FormBorderStyle = FormBorderStyle.FixedDialog;
                 MaximizeBox = false;
                 MinimizeBox = false;
@@ -210,6 +224,32 @@ namespace WinFormsApp1
                 System.Diagnostics.Debug.WriteLine($"Error in InitializeComponent: {ex.Message}");
                 throw;
             }
+        }
+
+        private void AdvancedAdBlockerButton_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                var adBlockerManagerForm = new AdBlockerManagerForm(adBlockerSettings);
+                
+                if (adBlockerManagerForm.ShowDialog() == DialogResult.OK)
+                {
+                    adBlockerSettings = adBlockerManagerForm.Settings;
+                    MessageBox.Show("Ad blocker settings updated successfully!", "Settings Updated", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error opening ad blocker settings: {ex.Message}", "Error", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        // Property to get updated ad blocker settings
+        public AdBlockerSettings GetUpdatedAdBlockerSettings()
+        {
+            return adBlockerSettings;
         }
     }
 }

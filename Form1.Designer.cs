@@ -162,8 +162,8 @@ namespace WinFormsApp1
             minimizeButton.Text = "🗕";
             minimizeButton.UseVisualStyleBackColor = false;
             minimizeButton.Click += MinimizeButton_Click;
-            minimizeButton.MouseEnter += (s, e) => minimizeButton.BackColor = Color.FromArgb(62, 62, 66);
-            minimizeButton.MouseLeave += (s, e) => minimizeButton.BackColor = Color.Transparent;
+            minimizeButton.MouseEnter += ButtonMouseEnter;
+            minimizeButton.MouseLeave += ButtonMouseLeave;
             // 
             // maximizeButton
             // 
@@ -180,8 +180,8 @@ namespace WinFormsApp1
             maximizeButton.Text = "🗖";
             maximizeButton.UseVisualStyleBackColor = false;
             maximizeButton.Click += MaximizeButton_Click;
-            maximizeButton.MouseEnter += (s, e) => maximizeButton.BackColor = Color.FromArgb(62, 62, 66);
-            maximizeButton.MouseLeave += (s, e) => maximizeButton.BackColor = Color.Transparent;
+            maximizeButton.MouseEnter += ButtonMouseEnter;
+            maximizeButton.MouseLeave += ButtonMouseLeave;
             // 
             // closeButton
             // 
@@ -198,8 +198,8 @@ namespace WinFormsApp1
             closeButton.Text = "✕";
             closeButton.UseVisualStyleBackColor = false;
             closeButton.Click += CloseButton_Click;
-            closeButton.MouseEnter += (s, e) => closeButton.BackColor = Color.FromArgb(232, 17, 35);
-            closeButton.MouseLeave += (s, e) => closeButton.BackColor = Color.Transparent;
+            closeButton.MouseEnter += closeButtonMouseEnter;
+            closeButton.MouseLeave += ButtonMouseLeave;
             // 
             // navigationPanel
             // 
@@ -436,6 +436,21 @@ namespace WinFormsApp1
             addressBarContainer.ResumeLayout(false);
             addressBarContainer.PerformLayout();
             ResumeLayout(false);
+        }
+
+        private void ButtonMouseLeave(object sender, EventArgs e)
+        {
+            ((Button)sender).BackColor = Color.Transparent;
+        }
+
+        private void closeButtonMouseEnter(object sender, EventArgs e)
+        {
+            ((Button)sender).BackColor = Color.FromArgb(232, 17, 35);
+        }
+
+        private void ButtonMouseEnter(object sender, EventArgs e)
+        {
+            ((Button)sender).BackColor = Color.FromArgb(62, 62, 66);
         }
 
         private void SetupButtonHover(Button button)
