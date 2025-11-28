@@ -1,6 +1,7 @@
 ﻿using Microsoft.Web.WebView2.Core;
 using System.Text.Json;
-using System.IO; // Add this line
+using System.IO;
+using CVSBrowser; // Add this line
 
 namespace WinFormsApp1
 {
@@ -299,8 +300,11 @@ namespace WinFormsApp1
                 ThemeManager.ThemeChanged += OnThemeChanged;
                 WindowState = FormWindowState.Normal;
 
-                // Subscribe to new tab button event
+                // In Form1.cs constructor, update the event subscription:
                 chromeTabControl.NewTabRequested += async (s, e) => await CreateNewTab(homeUrl);
+
+                // Also ensure the new tab button is always present
+                chromeTabControl.EnsureNewTabButton();
             }
         }
 
@@ -560,6 +564,9 @@ namespace WinFormsApp1
         {
             try
             {
+                // Remove the new tab button temporarily
+                chromeTabControl.RemoveNewTabButton();
+
                 System.Diagnostics.Debug.WriteLine($"CreateNewTab called with URL: {url}");
 
                 var webView = new Microsoft.Web.WebView2.WinForms.WebView2
@@ -586,6 +593,9 @@ namespace WinFormsApp1
                 chromeTabControl.TabPages.Add(tabPage);
                 webContentPanel.Controls.Add(webView);
 
+                // Add the new tab button back at the end
+                chromeTabControl.EnsureNewTabButton();
+
                 // Ensure WebView2 is initialized first!
                 await webView.EnsureCoreWebView2Async(null);
 
@@ -602,8 +612,8 @@ namespace WinFormsApp1
                 webView.CoreWebView2.DownloadStarting += (s, args) => OnDownloadStarting(args);
                 webView.CoreWebView2.NewWindowRequested += (s, args) => OnNewWindowRequested(args);
 
-                // Now select the tab and update UI
-                chromeTabControl.SelectedTab = tabPage;
+                // Select the new tab (not the new tab button)
+                chromeTabControl.SelectedIndex = chromeTabControl.TabCount - 2; // -2 because last tab is the "+" button
                 ShowCurrentTabWebView();
                 UpdateAddressBar();
 
@@ -622,7 +632,7 @@ namespace WinFormsApp1
                     webView.CoreWebView2.Navigate(url);
                 }
 
-                if (chromeTabControl.TabPages.Count > 0)
+                if (chromeTabControl.TabPages.Count > 1) // > 1 because we have the + button
                     SaveBrowserSession();
 
                 addressBar?.Focus();
@@ -664,7 +674,7 @@ namespace WinFormsApp1
             if (!isAdBlockerEnabled) return;
 
             string uri = e.Request.Uri.ToLower();
-            
+
             // Load current ad blocker settings dynamically
             var adBlockerSettings = LoadAdBlockerSettings();
 
@@ -783,7 +793,7 @@ namespace WinFormsApp1
 
             string lowerUrl = url.ToLower();
             var adBlockerSettings = LoadAdBlockerSettings();
-            
+
             return adBlockerSettings.BlockedDomains.Any(domain => lowerUrl.Contains(domain.ToLower())) ||
                    adBlockerSettings.BlockedKeywords.Any(keyword => lowerUrl.Contains(keyword.ToLower()));
         }
@@ -955,7 +965,19 @@ namespace WinFormsApp1
         private BrowserTab? GetCurrentTab()
         {
             var selectedIndex = chromeTabControl.SelectedIndex;
-            return selectedIndex >= 0 && selectedIndex < browserTabs.Count ? browserTabs[selectedIndex] : null;
+
+            // Make sure we don't return anything if the new tab button is selected or index is invalid
+            if (selectedIndex >= 0 && selectedIndex < browserTabs.Count)
+            {
+                // Check if the selected tab is the new tab button
+                if (selectedIndex < chromeTabControl.TabPages.Count &&
+                    chromeTabControl.TabPages[selectedIndex].Text == "+")
+                    return null;
+
+                return browserTabs[selectedIndex];
+            }
+
+            return null;
         }
 
         private void AddToHistory(string title, string url)
@@ -1139,7 +1161,7 @@ namespace WinFormsApp1
                                     {
                                         // Remove old ad blocker
                                         await tab.WebView.CoreWebView2.ExecuteScriptAsync(RemoveAdBlockerCSS);
-                                        
+
                                         // Apply new ad blocker with updated settings
                                         await tab.WebView.CoreWebView2.ExecuteScriptAsync(updatedSettings.GetEffectiveCSS());
                                         await tab.WebView.CoreWebView2.ExecuteScriptAsync(updatedSettings.GetEffectiveJavaScript());
@@ -1215,11 +1237,20 @@ namespace WinFormsApp1
 
         private void ChromeTabControl_SelectedIndexChanged(object sender, EventArgs e)
         {
+            // Don't process if the new tab button is selected
+            if (chromeTabControl.SelectedIndex >= 0 &&
+                chromeTabControl.SelectedIndex < chromeTabControl.TabPages.Count &&
+                chromeTabControl.TabPages[chromeTabControl.SelectedIndex].Text == "+")
+            {
+                return; // Don't show WebView or update UI for the + button
+            }
+
             ShowCurrentTabWebView();
             UpdateAddressBar();
             UpdateNavigationButtons();
             SaveBrowserSession();
         }
+
         private void ChromeTabControl_MouseClick(object sender, MouseEventArgs e)
         {
             var chromeTab = (ChromeTabControl)sender;
@@ -1255,14 +1286,20 @@ namespace WinFormsApp1
         {
             // Handled by custom ChromeTabControl paint method
         }
-
         private void CloseTab(int index)
         {
             if (index >= 0 && index < browserTabs.Count)
             {
+                // Don't close if it's the new tab button
+                if (chromeTabControl.TabPages[index].Text == "+")
+                    return;
+
                 if (browserTabs.Count > 1)
                 {
                     var tabToClose = browserTabs[index];
+
+                    // Determine which tab to select after closing
+                    int newSelectedIndex = DetermineNewSelectedTab(index);
 
                     // Remove WebView from webContentPanel
                     if (tabToClose.WebView != null)
@@ -1274,6 +1311,28 @@ namespace WinFormsApp1
                     browserTabs.RemoveAt(index);
                     chromeTabControl.TabPages.RemoveAt(index);
 
+                    // Select the appropriate tab after removal
+                    // Adjust the index if we removed a tab before the target tab
+                    if (newSelectedIndex > index)
+                    {
+                        newSelectedIndex--;
+                    }
+
+                    // Ensure the index is within bounds
+                    newSelectedIndex = Math.Max(0, Math.Min(newSelectedIndex, chromeTabControl.TabPages.Count - 2)); // -2 to account for the + button
+
+                    // Only select if it's not the new tab button
+                    if (newSelectedIndex < chromeTabControl.TabPages.Count &&
+                        chromeTabControl.TabPages[newSelectedIndex].Text != "+")
+                    {
+                        chromeTabControl.SelectedIndex = newSelectedIndex;
+                    }
+                    else if (chromeTabControl.TabPages.Count > 1) // If we have real tabs (not just the + button)
+                    {
+                        // Select the last real tab (before the + button)
+                        chromeTabControl.SelectedIndex = chromeTabControl.TabPages.Count - 2;
+                    }
+
                     // Show the current tab after closing
                     ShowCurrentTabWebView();
                     UpdateAddressBar();
@@ -1283,6 +1342,48 @@ namespace WinFormsApp1
                 else
                 {
                     Close();
+                }
+            }
+        }
+
+        // Helper method to determine which tab should be selected after closing a tab
+        private int DetermineNewSelectedTab(int closingTabIndex)
+        {
+            int currentSelectedIndex = chromeTabControl.SelectedIndex;
+
+            // If we're closing the currently selected tab
+            if (closingTabIndex == currentSelectedIndex)
+            {
+                // If there's a tab to the right (excluding the + button), select it
+                if (closingTabIndex < browserTabs.Count - 1)
+                {
+                    return closingTabIndex; // The tab to the right will shift into this position
+                }
+                // Otherwise, select the tab to the left
+                else if (closingTabIndex > 0)
+                {
+                    return closingTabIndex - 1;
+                }
+                // If this is the only tab, we'll close the application (handled in the main method)
+                else
+                {
+                    return 0;
+                }
+            }
+            // If we're closing a tab other than the currently selected one
+            else
+            {
+                // If we're closing a tab to the left of the selected tab,
+                // the selected tab will shift left, so we need to adjust
+                if (closingTabIndex < currentSelectedIndex)
+                {
+                    return currentSelectedIndex - 1;
+                }
+                // If we're closing a tab to the right of the selected tab,
+                // the selected tab stays in the same position
+                else
+                {
+                    return currentSelectedIndex;
                 }
             }
         }
@@ -1723,6 +1824,7 @@ namespace WinFormsApp1
         {
             if (e.Button == MouseButtons.Left)
             {
+                // Only start dragging if clicking on empty tab strip area
                 isDragging = true;
                 dragStartPoint = new Point(e.X, e.Y);
             }
