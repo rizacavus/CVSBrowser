@@ -13,6 +13,7 @@ namespace CVSBrowser
         private const int TAB_HEIGHT = 32;
 
         public event EventHandler? NewTabRequested;
+        public event EventHandler<MouseEventArgs>? EmptyAreaClicked; // New event for empty area clicks
 
         public ChromeTabControl()
         {
@@ -49,8 +50,33 @@ namespace CVSBrowser
             return new Rectangle(x, y, width, TAB_HEIGHT);
         }
 
+        // Get the actual clickable area of tabs (excluding empty space)
+        private Rectangle GetActualTabsArea()
+        {
+            if (TabCount == 0)
+                return Rectangle.Empty;
+
+            int totalWidth = 0;
+            for (int i = 0; i < TabCount; i++)
+            {
+                bool isNewTab = TabPages[i].Text == NEW_TAB_TEXT;
+                totalWidth += isNewTab ? NEW_TAB_WIDTH : REGULAR_TAB_WIDTH;
+            }
+
+            return new Rectangle(0, 0, totalWidth, Height);
+        }
+
         protected override void OnMouseDown(MouseEventArgs e)
         {
+            // First check if clicking in the actual tabs area
+            var tabsArea = GetActualTabsArea();
+            if (!tabsArea.Contains(e.Location))
+            {
+                // Clicking in empty area - allow parent to handle for dragging
+                EmptyAreaClicked?.Invoke(this, e);
+                return;
+            }
+
             // Check if clicking on the new tab (last tab)
             if (TabCount > 0)
             {
@@ -74,6 +100,21 @@ namespace CVSBrowser
 
         protected override void OnMouseMove(MouseEventArgs e)
         {
+            // Check if in actual tabs area first
+            var tabsArea = GetActualTabsArea();
+            if (!tabsArea.Contains(e.Location))
+            {
+                // In empty area - reset cursor and hover state
+                if (hoveredTabIndex != -1)
+                {
+                    hoveredTabIndex = -1;
+                    Invalidate();
+                }
+                Cursor = Cursors.Default;
+                base.OnMouseMove(e);
+                return;
+            }
+
             // Check tab hover
             int newHoveredIndex = -1;
             for (int i = 0; i < TabCount; i++)
@@ -176,7 +217,7 @@ namespace CVSBrowser
             {
                 // Draw plus sign for new tab button - smaller font for smaller button
                 using (var textBrush = new SolidBrush(Color.White))
-                using (var font = new Font("Segoe UI", 12F, FontStyle.Bold)) // Reduced from 14F
+                using (var font = new Font("Segoe UI", 12F, FontStyle.Bold)) // Reduced from 14F for better fit
                 {
                     var format = new StringFormat
                     {

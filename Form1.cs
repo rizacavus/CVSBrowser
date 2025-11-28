@@ -1,7 +1,7 @@
-﻿using Microsoft.Web.WebView2.Core;
-using System.Text.Json;
+﻿using CVSBrowser; // Add this line
+using Microsoft.Web.WebView2.Core;
 using System.IO;
-using CVSBrowser; // Add this line
+using System.Text.Json;
 
 namespace WinFormsApp1
 {
@@ -303,10 +303,21 @@ namespace WinFormsApp1
                 // In Form1.cs constructor, update the event subscription:
                 chromeTabControl.NewTabRequested += async (s, e) => await CreateNewTab(homeUrl);
 
+                // Handle empty area clicks for window dragging
+                chromeTabControl.EmptyAreaClicked += (s, e) =>
+                {
+                    if (e.Button == MouseButtons.Left && WindowState != FormWindowState.Maximized)
+                    {
+                        ReleaseCapture();
+                        SendMessage(Handle, WM_NCLBUTTONDOWN, HT_CAPTION, 0);
+                    }
+                };
+
                 // Also ensure the new tab button is always present
                 chromeTabControl.EnsureNewTabButton();
             }
         }
+
 
         private void InitializeAdBlocker()
         {
@@ -551,7 +562,7 @@ namespace WinFormsApp1
                         var session = LoadBrowserSession();
                         if (session != null)
                         {
-                            this.Invoke(async () => await RestoreBrowserSession(session));
+                            this.Invoke(() => _ = RestoreBrowserSession(session));
                         }
                     });
                     return true;
@@ -669,7 +680,7 @@ namespace WinFormsApp1
             //};
         }
 
-        private void OnWebResourceRequested(object sender, CoreWebView2WebResourceRequestedEventArgs e)
+        private void OnWebResourceRequested(object? sender, CoreWebView2WebResourceRequestedEventArgs e)
         {
             if (!isAdBlockerEnabled) return;
 
@@ -1432,12 +1443,12 @@ namespace WinFormsApp1
                 contextMenu.Items.Add("History", null, (s, args) => ShowHistoryDialog());
                 contextMenu.Items.Add("Downloads", null, (s, args) => ShowDownloadsDialog());
                 contextMenu.Items.Add("-");
-                contextMenu.Items.Add($"Ad Blocker: {(isAdBlockerEnabled ? "ON" : "OFF")}", null, async (s, args) => AdBlockerButton_Click(this, EventArgs.Empty));
+                contextMenu.Items.Add($"Ad Blocker: {(isAdBlockerEnabled ? "ON" : "OFF")}", null, (s, args) => AdBlockerButton_Click(this, EventArgs.Empty));
                 contextMenu.Items.Add("-");
-                contextMenu.Items.Add("Restore Session (Ctrl+Shift+T)", null, async (s, args) =>
+                contextMenu.Items.Add("Restore Session (Ctrl+Shift+T)", null, (s, args) =>
                 {
                     var session = LoadBrowserSession();
-                    if (session != null) await RestoreBrowserSession(session);
+                    if (session != null) _ = RestoreBrowserSession(session);
                 });
                 contextMenu.Items.Add("-");
                 contextMenu.Items.Add("Settings", null, (s, args) => ShowSettingsDialog());
@@ -1615,13 +1626,16 @@ namespace WinFormsApp1
                             {
                                 try
                                 {
-                                    if (isWebDarkModeEnabled)
+                                    if (currentTab?.WebView?.CoreWebView2 != null)
                                     {
-                                        await currentTab.WebView.CoreWebView2.ExecuteScriptAsync(DarkModeCSS);
-                                    }
-                                    else
-                                    {
-                                        await currentTab.WebView.CoreWebView2.ExecuteScriptAsync(RemoveDarkModeCSS);
+                                        if (isWebDarkModeEnabled)
+                                        {
+                                            await currentTab.WebView.CoreWebView2.ExecuteScriptAsync(DarkModeCSS);
+                                        }
+                                        else
+                                        {
+                                            await currentTab.WebView.CoreWebView2.ExecuteScriptAsync(RemoveDarkModeCSS);
+                                        }
                                     }
                                 }
                                 catch (Exception ex)
